@@ -5,6 +5,7 @@ def load_words(filename="words.txt"):
     with open(filename, "r") as f:
         return [line.strip().lower() for line in f if len(line.strip()) == 5]
 
+
 def evaluate_guess(secret, guess):
     feedback = ['gray'] * 5
     secret_letters = list(secret)
@@ -23,6 +24,7 @@ def evaluate_guess(secret, guess):
 
     return feedback
 
+
 def update_constraints(guess, feedback, constraints):
     for i, (char, color) in enumerate(zip(guess, feedback)):
         if color == 'green':
@@ -32,6 +34,7 @@ def update_constraints(guess, feedback, constraints):
         elif color == 'gray':
             if char not in constraints['greens'].values() and char not in constraints['yellows']:
                 constraints['grays'].add(char)
+
 
 def prune_words(word_list, constraints):
     def is_valid(word):
@@ -53,8 +56,30 @@ def prune_words(word_list, constraints):
 
     return [word for word in word_list if is_valid(word)]
 
+
 def select_guess(valid_words):
-    return random.choice(valid_words) if valid_words else None
+    candidates = dict()
+    for i in range(5):
+        new_word = random.choice(valid_words)
+        candidates[new_word] = unique_letters(new_word)
+    best_score = max(candidates.values())
+    for word in candidates:
+        if candidates[word] == best_score:
+            return word
+    # return random.choice(valid_words) if valid_words else None
+
+
+def unique_letters(word):
+    # Checks how many unique letters are in a word
+    letters = set()
+    unique_letters = 5
+    for letter in word:
+        if letter in letters:
+            unique_letters -= 1
+        else:
+            letters.add(letter)
+    return unique_letters
+
 
 def print_guess_feedback(guess, feedback):
     # Make letters uppercase and space them out
