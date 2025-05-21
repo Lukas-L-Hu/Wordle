@@ -2,21 +2,21 @@ import random
 from collections import defaultdict
 
 def load_words(filename="words.txt"):
+    # loads words from a text file
     with open(filename, "r") as f:
         return [line.strip().lower() for line in f if len(line.strip()) == 5]
 
 
 def evaluate_guess(secret, guess):
+    # Checks what colors each letter should be
     feedback = ['gray'] * 5
     secret_letters = list(secret)
 
-    # First pass for greens
     for i in range(5):
         if guess[i] == secret[i]:
             feedback[i] = 'green'
-            secret_letters[i] = None  # prevent reuse
+            secret_letters[i] = None
 
-    # Second pass for yellows
     for i in range(5):
         if feedback[i] == 'gray' and guess[i] in secret_letters:
             feedback[i] = 'yellow'
@@ -26,6 +26,7 @@ def evaluate_guess(secret, guess):
 
 
 def update_constraints(guess, feedback, constraints):
+    # Updates the constraints that guesses have to be within
     for i, (char, color) in enumerate(zip(guess, feedback)):
         if color == 'green':
             constraints['greens'][i] = char
@@ -37,18 +38,16 @@ def update_constraints(guess, feedback, constraints):
 
 
 def prune_words(word_list, constraints):
+    # Eliminates words from consideration
     def is_valid(word):
-        # Green check
         for i, c in constraints['greens'].items():
             if word[i] != c:
                 return False
-        # Yellow check
         for c, bad_positions in constraints['yellows'].items():
             if c not in word:
                 return False
             if any(word[i] == c for i in bad_positions):
                 return False
-        # Gray check
         for c in constraints['grays']:
             if c in word:
                 return False
@@ -58,6 +57,7 @@ def prune_words(word_list, constraints):
 
 
 def select_guess(valid_words):
+    # Selects a random guess and has more emphasis on eligible words with the most unique letters
     candidates = dict()
     for i in range(5):
         new_word = random.choice(valid_words)
@@ -81,39 +81,39 @@ def unique_letters(word):
     return unique_letters
 
 
-def print_guess_feedback(guess, feedback):
-    # Make letters uppercase and space them out
-    spaced_guess = ' '.join(guess.upper())
+def print_guess_feedback(guess, feedback, past_guesses):
+    # Prints out the letters based on what color they are
+    # spaced_guess = ' '.join(guess.upper())
 
-    # Map feedback to symbols and space them out to align with letters
     symbols = {
         'green': 'G',
         'yellow': 'Y',
         'gray': '.'
     }
     spaced_feedback = ' '.join(symbols[f] for f in feedback)
-
-    # Print both lines
-    print(spaced_guess)
+    for guess in past_guesses:
+        print(' '.join(guess))
+    # print(spaced_guess)
     print(spaced_feedback)
     print()
 
-# ----------------------------
-# Main simulation loop
-# ----------------------------
+
 def run_simulation(secret_word, word_list):
+    # Runs the wordle simulation
     constraints = {
-        'greens': {},              # pos → char
-        'yellows': defaultdict(set), # char → bad positions
+        'greens': {},
+        'yellows': defaultdict(set),
         'grays': set()
     }
 
     valid_words = word_list[:]
+    previous_guesses = []
     for attempt in range(1, 7):
         guess = select_guess(valid_words)
         print(f"Attempt {attempt}:")
         feedback = evaluate_guess(secret_word, guess)
-        print_guess_feedback(guess, feedback)
+        previous_guesses.append(guess.upper())
+        print_guess_feedback(guess, feedback, previous_guesses)
 
         if guess == secret_word:
             print(f"Solved in {attempt} tries!")
