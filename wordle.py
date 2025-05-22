@@ -1,5 +1,8 @@
 import random
 from collections import defaultdict
+from collections import Counter
+
+NUM_SIMULATIONS = 1000 # constant for how many simulations to run
 
 def load_words(filename="words.txt"):
     # loads words from a text file
@@ -8,21 +11,22 @@ def load_words(filename="words.txt"):
 
 
 def evaluate_guess(secret, guess):
-    # Checks what colors each letter should be
+    # Determines the color of each letter in the guess
     feedback = ['gray'] * 5
-    secret_letters = list(secret)
+    secret_counts = Counter(secret)
 
     for i in range(5):
         if guess[i] == secret[i]:
             feedback[i] = 'green'
-            secret_letters[i] = None
+            secret_counts[guess[i]] -= 1
 
     for i in range(5):
-        if feedback[i] == 'gray' and guess[i] in secret_letters:
+        if feedback[i] == 'gray' and secret_counts[guess[i]] > 0:
             feedback[i] = 'yellow'
-            secret_letters[secret_letters.index(guess[i])] = None
+            secret_counts[guess[i]] -= 1
 
     return feedback
+
 
 
 def update_constraints(guess, feedback, constraints):
@@ -33,7 +37,9 @@ def update_constraints(guess, feedback, constraints):
         elif color == 'yellow':
             constraints['yellows'][char].add(i)
         elif color == 'gray':
-            if char not in constraints['greens'].values() and char not in constraints['yellows']:
+            if (char not in constraints['greens'].values()
+                    and char not in constraints['yellows']
+                    and guess.count(char) == 1):  # Only add to grays if it only appeared once
                 constraints['grays'].add(char)
 
 
@@ -57,16 +63,18 @@ def prune_words(word_list, constraints):
 
 
 def select_guess(valid_words):
-    # Selects a random guess and has more emphasis on eligible words with the most unique letters
-    candidates = dict()
-    for i in range(5):
+    if not valid_words:
+        return None
+
+    candidates = {}
+    for _ in range(5):
         new_word = random.choice(valid_words)
         candidates[new_word] = unique_letters(new_word)
     best_score = max(candidates.values())
     for word in candidates:
         if candidates[word] == best_score:
             return word
-    # return random.choice(valid_words) if valid_words else None
+
 
 
 def unique_letters(word):
@@ -117,14 +125,36 @@ def run_simulation(secret_word, word_list):
 
         if guess == secret_word:
             print(f"Solved in {attempt} tries!")
-            return
+            return attempt
 
         update_constraints(guess, feedback, constraints)
         valid_words = prune_words(valid_words, constraints)
 
     print(f"Failed to guess the word: {secret_word}")
+    return False
 
 if __name__ == "__main__":
-    word_list = load_words("words.txt")
-    secret = random.choice(word_list)
-    run_simulation(secret, word_list)
+    # word_list = load_words("words.txt")
+    # secret = random.choice(word_list)
+    # run_simulation(secret, word_list)
+
+    correct = 0
+    incorrect_words = []
+    total_attempts = 0
+
+    for _ in range(NUM_SIMULATIONS):
+        word_list = load_words("words.txt")
+        secret = random.choice(word_list)
+        attempts = run_simulation(secret, word_list)
+        if attempts:
+            correct += 1
+            total_attempts += attempts
+        else:
+            incorrect_words.append(secret)
+
+    print(f'Correct: {correct}\n'
+          f'Incorrect: {NUM_SIMULATIONS-correct}\n'
+          f'Correct rate: {correct / NUM_SIMULATIONS * 100}%\n'
+          f'Avg. # attempts (on guessed words): {total_attempts / correct}\n'
+          f'Incorrect words: {incorrect_words}')
+
